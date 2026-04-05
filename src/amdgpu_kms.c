@@ -1444,25 +1444,6 @@ static Bool AMDGPUCreateWindow_oneshot(WindowPtr pWin)
 	return ret;
 }
 
-static void amdgpu_determine_cursor_size(int fd, AMDGPUInfoPtr info)
-{
-	uint64_t value;
-
-	if (drmGetCap(fd, DRM_CAP_CURSOR_WIDTH, &value) == 0)
-		info->cursor_w = value;
-	else if (info->family < AMDGPU_FAMILY_CI)
-		info->cursor_w = CURSOR_WIDTH;
-	else
-		info->cursor_w = CURSOR_WIDTH_CIK;
-
-	if (drmGetCap(fd, DRM_CAP_CURSOR_HEIGHT, &value) == 0)
-		info->cursor_h = value;
-	else if (info->family < AMDGPU_FAMILY_CI)
-		info->cursor_h = CURSOR_HEIGHT;
-	else
-		info->cursor_h = CURSOR_HEIGHT_CIK;
-}
-
 /* When the root window is mapped, set the initial modes */
 void AMDGPUWindowExposures_oneshot(WindowPtr pWin, RegionPtr pRegion)
 {
@@ -1642,7 +1623,13 @@ Bool AMDGPUPreInit_KMS(ScrnInfoPtr pScrn, int flags)
 	else
 		pAMDGPUEnt->HasCRTC2 = TRUE;
 
-	amdgpu_determine_cursor_size(pAMDGPUEnt->fd, info);
+	if (info->family < AMDGPU_FAMILY_CI) {
+		info->cursor_w = CURSOR_WIDTH;
+		info->cursor_h = CURSOR_HEIGHT;
+	} else {
+		info->cursor_w = CURSOR_WIDTH_CIK;
+		info->cursor_h = CURSOR_HEIGHT_CIK;
+	}
 
 	amdgpu_query_heap_size(pAMDGPUEnt->pDev, AMDGPU_GEM_DOMAIN_GTT,
 				&heap_size, &max_allocation);
