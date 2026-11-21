@@ -16,8 +16,8 @@ randrproto_dep = dependency('randrproto', required: true)
 renderproto_dep = dependency('renderproto', required: true)
 videoproto_dep = dependency('videoproto', required: true)
 xextproto_dep = dependency('xextproto', version: '>=7.1', required: true)
-libdrm_dep = dependency('libdrm', version: '>=2.4.121', required: true)
-libdrm_amdgpu_dep = dependency('libdrm_amdgpu', version: '>=2.4.121', required: true)
+libdrm_dep = dependency('libdrm', version: '>=2.4.89', required: true)
+libdrm_amdgpu_dep = dependency('libdrm_amdgpu', version: '>=2.4.89', required: true)
 gbm_dep = dependency('gbm', required: true)
 
 # Optional dependencies

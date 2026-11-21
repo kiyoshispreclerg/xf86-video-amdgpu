@@ -67,6 +67,7 @@ amdgpu_tiling_info_to_modifier(uint64_t tiling_info, int asic_family)
 		return DRM_FORMAT_MOD_INVALID;
 
 	/* GFX12 and later use a different tiling format */
+#ifdef AMDGPU_FAMILY_GC_12_0_0
 	if (asic_family >= AMDGPU_FAMILY_GC_12_0_0) {
 #ifdef HAVE_AMD_FMT_MOD_TILE_VER_GFX12
 		uint32_t swizzle_mode = AMDGPU_TILING_GET(tiling_info, GFX12_SWIZZLE_MODE);
@@ -99,6 +100,7 @@ amdgpu_tiling_info_to_modifier(uint64_t tiling_info, int asic_family)
 		return DRM_FORMAT_MOD_INVALID;
 #endif
 	}
+#endif
 
 	/* GFX9 - GFX11: Check for 64K tiled modes */
 	if (asic_family >= AMDGPU_FAMILY_AI) {
@@ -106,10 +108,13 @@ amdgpu_tiling_info_to_modifier(uint64_t tiling_info, int asic_family)
 		uint64_t modifier;
 
 		/* Determine tile version based on family */
+#if defined(AMDGPU_FAMILY_GC_11_0_0) && defined(AMD_FMT_MOD_TILE_VER_GFX11)
 		if (asic_family >= AMDGPU_FAMILY_GC_11_0_0) {
 			modifier = AMD_FMT_MOD |
 				AMD_FMT_MOD_SET(TILE_VERSION, AMD_FMT_MOD_TILE_VER_GFX11);
-		} else if (asic_family >= AMDGPU_FAMILY_NV) {
+		} else
+#endif
+		if (asic_family >= AMDGPU_FAMILY_NV) {
 			modifier = AMD_FMT_MOD |
 				AMD_FMT_MOD_SET(TILE_VERSION, AMD_FMT_MOD_TILE_VER_GFX10);
 		} else {
@@ -316,6 +321,7 @@ static void
 amdgpu_dri3_syncobj_eventfd(struct dri3_syncobj *syncobj, uint64_t point,
                             int efd, uint32_t flags)
 {
+#ifdef HAVE_DRM_SYNCOBJ_EVENTFD
     if (drmSyncobjEventfd(amdgpu_dri3_syncobj_drm_fd(syncobj),
                           amdgpu_dri3_syncobj_handle(syncobj), point, efd,
                           flags) == 0)
@@ -323,6 +329,12 @@ amdgpu_dri3_syncobj_eventfd(struct dri3_syncobj *syncobj, uint64_t point,
 
     amdgpu_dri3_syncobj_warn(syncobj->screen, SYNCOBJ_OP_EVENTFD,
                              "drmSyncobjEventfd", errno);
+#else
+    (void)syncobj;
+    (void)point;
+    (void)flags;
+#endif
+
     /* Wake the waiter anyway; it checks the point again. */
     if (eventfd_write(efd, 1) != 0)
         amdgpu_dri3_syncobj_warn(syncobj->screen, SYNCOBJ_OP_EVENTFD,
@@ -398,6 +410,7 @@ amdgpu_dri3_syncobj_supported(ScrnInfoPtr scrn)
 
 #ifdef HAVE_SYS_EVENTFD_H
     int drm_fd = AMDGPUEntPriv(scrn)->fd;
+#ifdef HAVE_DRM_SYNCOBJ_EVENTFD
     uint64_t cap = 0;
 
     if (drmGetCap(drm_fd, DRM_CAP_SYNCOBJ_TIMELINE, &cap) != 0 || !cap) {
@@ -408,6 +421,10 @@ amdgpu_dri3_syncobj_supported(ScrnInfoPtr scrn)
         if (drmSyncobjEventfd(drm_fd, 0, 0, -1, 0) == 0 || errno != ENOENT)
             reason = "no syncobj eventfd";
     }
+#else
+    (void)drm_fd;
+    reason = "no timeline syncobjs";
+#endif
 #else
     reason = "built without eventfd";
 #endif
